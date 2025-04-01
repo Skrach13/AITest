@@ -16,10 +16,12 @@ public class AIController : MonoBehaviour
     private float[] inputs = new float[5]; // 5 входов
     private float[] outputs = new float[2]; // 2 выхода (движение и поворот)
 
+    public NeuralNetwork Brain { get => brain; set => brain = value; }
+
     void Start()
     {       
         // Инициализация нейросети: 5 входов, 6 скрытых нейронов, 2 выхода
-        brain = new NeuralNetwork(new int[] { 5, 6, 2 });
+        Brain = new NeuralNetwork(new int[] { 5, 6, 2 });
         InvokeRepeating("MakeDecision", 0.5f, 0.1f); // Принимать решение каждые 0.1 сек
     }
 
@@ -56,11 +58,11 @@ public class AIController : MonoBehaviour
         }
 
         // 2. Получаем решение от нейросети
-        outputs = brain.FeedForward(inputs);
+        outputs = Brain.FeedForward(inputs);
 
         // 3. Обучаем нейросеть на основе результата
         float reward = CalculateReward();
-        brain.BackPropagate(inputs, GetExpectedOutputs(reward));
+        Brain.BackPropagate(inputs, GetExpectedOutputs(reward));
     }
 
     float CalculateReward()
