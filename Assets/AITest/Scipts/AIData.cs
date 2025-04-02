@@ -1,16 +1,15 @@
-﻿using System;
+﻿using System.Collections.Generic;
 
 [System.Serializable]
 public class AIData : GameDataBase
-{
-    public int[] LayersData ;         // Архитектура сети (например, [5, 6, 2])
-    public float[][] NeuronsData;    // Нейроны в каждом слое
-    public float[][][] WeightsData;  // Веса между нейронами
-
+{    
+    public List<int> LayersData;          // Архитектура сети (например, [5, 6, 2])
+    public List<List<float>> NeuronsData; // Нейроны в каждом слое
+    public List<List<List<float>>> WeightsData;
 
     public AIData() { }
 
-    public AIData(int[] layers, float[][] neurons, float[][][] weights)
+    public AIData(List<int> layers, List<List<float>> neurons, List<List<List<float>>> weights)
     {
 
         LayersData = layers;

@@ -1,82 +1,84 @@
-using System;
+п»їusing System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 public static class SecureBinarySaveSystem
 {
-    private static string savePath => Path.Combine(Application.dataPath,"Save", "test_save.bin");
 
-    public static void SaveGame(AIData data)
+    public static void SaveGame(AIData data, string IDSave)
     {
-        // Проверка данных
+        string savePath = Path.Combine(Application.dataPath, "Save", $"test_save{IDSave}.bin");
+
+        // РџСЂРѕРІРµСЂРєР° РґР°РЅРЅС‹С…
         if (data == null)
         {
-            Debug.LogError("Переданные данные == null!");
+            Debug.LogError("РџРµСЂРµРґР°РЅРЅС‹Рµ РґР°РЅРЅС‹Рµ == null!");
             return;
         }
 
-        int[] lengths = new int[data.NeuronsData.Length];
-        for (int i = 0; i < data.NeuronsData.Length; i++)
+        int[] lengths = new int[data.NeuronsData.Count];
+        for (int i = 0; i < data.NeuronsData.Count; i++)
         {
-            lengths[i] = data.NeuronsData[i].Length; // С проверкой на null
+            lengths[i] = data.NeuronsData[i].Count; // РЎ РїСЂРѕРІРµСЂРєРѕР№ РЅР° null
         }
 
-        // Выводим результат
-        Debug.Log("Длины массивов: " + string.Join(", ", lengths));
+        // Р’С‹РІРѕРґРёРј СЂРµР·СѓР»СЊС‚Р°С‚
+        Debug.Log("Р”Р»РёРЅС‹ РјР°СЃСЃРёРІРѕРІ: " + string.Join(", ", lengths));
 
         if (data.LayersData == null || data.NeuronsData == null || data.WeightsData == null)
         {
-            Debug.LogError("Один из массивов в данных == null!");
+            Debug.LogError("РћРґРёРЅ РёР· РјР°СЃСЃРёРІРѕРІ РІ РґР°РЅРЅС‹С… == null!");
             Debug.Log($"LayersData: {data.LayersData}, NeuronsData: {data.NeuronsData}, WeightsData: {data.WeightsData}");
             return;
         }
 
-        // Логирование структуры данных для отладки
-        Debug.Log("Попытка сохранения данных:");
+        // Р›РѕРіРёСЂРѕРІР°РЅРёРµ СЃС‚СЂСѓРєС‚СѓСЂС‹ РґР°РЅРЅС‹С… РґР»СЏ РѕС‚Р»Р°РґРєРё
+        Debug.Log("РџРѕРїС‹С‚РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ РґР°РЅРЅС‹С…:");
         Debug.Log($"LayersData: {string.Join(", ", data.LayersData)}");
-        Debug.Log($"NeuronsData: {data.NeuronsData.Length} массивов");
-        Debug.Log($"WeightsData: {data.WeightsData.Length} матриц");
+        Debug.Log($"NeuronsData: {data.NeuronsData.Count} РјР°СЃСЃРёРІРѕРІ");
+        Debug.Log($"WeightsData: {data.WeightsData.Count} РјР°С‚СЂРёС†");
 
-        // Создание директории
+        // РЎРѕР·РґР°РЅРёРµ РґРёСЂРµРєС‚РѕСЂРёРё
         string directory = Path.GetDirectoryName(savePath);
         try
         {
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
-                Debug.Log("Создана директория: " + directory);
+                Debug.Log("РЎРѕР·РґР°РЅР° РґРёСЂРµРєС‚РѕСЂРёСЏ: " + directory);
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError("Ошибка создания директории: " + ex.Message);
+            Debug.LogError("РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ РґРёСЂРµРєС‚РѕСЂРёРё: " + ex.Message);
             return;
         }
 
-        // Сохранение данных
+        // РЎРѕС…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С…
         try
         {
             using (BinaryWriter writer = new BinaryWriter(File.Open(savePath, FileMode.Create)))
             {
                 // 1. LayersData
-                writer.Write(data.LayersData.Length);
+                writer.Write(data.LayersData.Count);
                 foreach (int value in data.LayersData)
                 {
                     writer.Write(value);
                 }
 
                 // 2. NeuronsData
-                writer.Write(data.NeuronsData.Length);
-                for (int i = 0; i < data.NeuronsData.Length; i++)
+                writer.Write(data.NeuronsData.Count);
+                for (int i = 0; i < data.NeuronsData.Count; i++)
                 {
                     if (data.NeuronsData[i] == null)
                     {
                         Debug.LogError($"NeuronsData[{i}] == null!");
-                        writer.Write(0); // Запись 0 как длины массива
+                        writer.Write(0); // Р—Р°РїРёСЃСЊ 0 РєР°Рє РґР»РёРЅС‹ РјР°СЃСЃРёРІР°
                         continue;
                     }
 
-                    writer.Write(data.NeuronsData[i].Length);
+                    writer.Write(data.NeuronsData[i].Count);
                     foreach (float value in data.NeuronsData[i])
                     {
                         writer.Write(value);
@@ -84,27 +86,27 @@ public static class SecureBinarySaveSystem
                 }
 
                 // 3. WeightsData
-                writer.Write(data.WeightsData.Length);
-                for (int i = 0; i < data.WeightsData.Length; i++)
+                writer.Write(data.WeightsData.Count);
+                for (int i = 0; i < data.WeightsData.Count; i++)
                 {
                     if (data.WeightsData[i] == null)
                     {
                         Debug.LogError($"WeightsData[{i}] == null!");
-                        writer.Write(0); // Запись 0 как длины массива
+                        writer.Write(0); // Р—Р°РїРёСЃСЊ 0 РєР°Рє РґР»РёРЅС‹ РјР°СЃСЃРёРІР°
                         continue;
                     }
 
-                    writer.Write(data.WeightsData[i].Length);
-                    for (int j = 0; j < data.WeightsData[i].Length; j++)
+                    writer.Write(data.WeightsData[i].Count);
+                    for (int j = 0; j < data.WeightsData[i].Count; j++)
                     {
                         if (data.WeightsData[i][j] == null)
                         {
                             Debug.LogError($"WeightsData[{i}][{j}] == null!");
-                            writer.Write(0); // Запись 0 как длины массива
+                            writer.Write(0); // Р—Р°РїРёСЃСЊ 0 РєР°Рє РґР»РёРЅС‹ РјР°СЃСЃРёРІР°
                             continue;
                         }
 
-                        writer.Write(data.WeightsData[i][j].Length);
+                        writer.Write(data.WeightsData[i][j].Count);
                         foreach (float value in data.WeightsData[i][j])
                         {
                             writer.Write(value);
@@ -113,33 +115,35 @@ public static class SecureBinarySaveSystem
                 }
             }
 
-            Debug.Log("Данные успешно сохранены в: " + savePath);
-            Debug.Log("Размер файла: " + new FileInfo(savePath).Length + " байт");
+            Debug.Log("Р”Р°РЅРЅС‹Рµ СѓСЃРїРµС€РЅРѕ СЃРѕС…СЂР°РЅРµРЅС‹ РІ: " + savePath);
+            Debug.Log("Р Р°Р·РјРµСЂ С„Р°Р№Р»Р°: " + new FileInfo(savePath).Length + " Р±Р°Р№С‚");
         }
         catch (Exception ex)
         {
-            Debug.LogError("Критическая ошибка сохранения: " + ex.ToString());
+            Debug.LogError("РљСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: " + ex.ToString());
         }
     }
 
 
-    public static AIData LoadGame()
+    public static AIData LoadGame(string IDSave)
     {
+        string savePath = Path.Combine(Application.dataPath, "Save", $"test_save{IDSave}.bin");
+
         try
         {
             string fullPath = Path.GetFullPath(savePath);
-            Debug.Log($"Попытка загрузки из: {fullPath}");
+            Debug.Log($"РџРѕРїС‹С‚РєР° Р·Р°РіСЂСѓР·РєРё РёР·: {fullPath}");
 
             if (!File.Exists(savePath))
             {
-                Debug.LogError($"Файл не существует по пути: {fullPath}");
+                Debug.LogError($"Р¤Р°Р№Р» РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ РїРѕ РїСѓС‚Рё: {fullPath}");
                 return null;
             }
 
             long fileSize = new FileInfo(savePath).Length;
             if (fileSize == 0)
             {
-                Debug.LogError("Файл сохранения пустой!");
+                Debug.LogError("Р¤Р°Р№Р» СЃРѕС…СЂР°РЅРµРЅРёСЏ РїСѓСЃС‚РѕР№!");
                 return null;
             }
 
@@ -149,13 +153,13 @@ public static class SecureBinarySaveSystem
 
                 // 1. LayersData
                 int layersLength = reader.ReadInt32();
-                if (layersLength < 0 || layersLength > 10000) // Разумные пределы
+                if (layersLength < 0 || layersLength > 10000) // Р Р°Р·СѓРјРЅС‹Рµ РїСЂРµРґРµР»С‹
                 {
-                    Debug.LogError($"Некорректная длина LayersData: {layersLength}");
+                    Debug.LogError($"РќРµРєРѕСЂСЂРµРєС‚РЅР°СЏ РґР»РёРЅР° LayersData: {layersLength}");
                     return null;
                 }
 
-                data.LayersData = new int[layersLength];
+                data.LayersData = new List<int>();
                 for (int i = 0; i < layersLength; i++)
                 {
                     data.LayersData[i] = reader.ReadInt32();
@@ -165,21 +169,21 @@ public static class SecureBinarySaveSystem
                 int neuronsArraysCount = reader.ReadInt32();
                 if (neuronsArraysCount < 0)
                 {
-                    Debug.LogError($"Некорректное количество массивов NeuronsData: {neuronsArraysCount}");
+                    Debug.LogError($"РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РјР°СЃСЃРёРІРѕРІ NeuronsData: {neuronsArraysCount}");
                     return null;
                 }
 
-                data.NeuronsData = new float[neuronsArraysCount][];
+                data.NeuronsData = new List<List<float>>();
                 for (int i = 0; i < neuronsArraysCount; i++)
                 {
                     int neuronsLength = reader.ReadInt32();
                     if (neuronsLength < 0)
                     {
-                        Debug.LogError($"Некорректная длина NeuronsData[{i}]: {neuronsLength}");
+                        Debug.LogError($"РќРµРєРѕСЂСЂРµРєС‚РЅР°СЏ РґР»РёРЅР° NeuronsData[{i}]: {neuronsLength}");
                         return null;
                     }
 
-                    data.NeuronsData[i] = new float[neuronsLength];
+                    data.NeuronsData[i] = new List<float>();
                     for (int j = 0; j < neuronsLength; j++)
                     {
                         data.NeuronsData[i][j] = reader.ReadSingle();
@@ -190,31 +194,31 @@ public static class SecureBinarySaveSystem
                 int weightsMatricesCount = reader.ReadInt32();
                 if (weightsMatricesCount < 0)
                 {
-                    Debug.LogError($"Некорректное количество матриц WeightsData: {weightsMatricesCount}");
+                    Debug.LogError($"РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РјР°С‚СЂРёС† WeightsData: {weightsMatricesCount}");
                     return null;
                 }
 
-                data.WeightsData = new float[weightsMatricesCount][][];
+                data.WeightsData = new List<List<List<float>>>();
                 for (int i = 0; i < weightsMatricesCount; i++)
                 {
                     int rowsCount = reader.ReadInt32();
                     if (rowsCount < 0)
                     {
-                        Debug.LogError($"Некорректное количество строк WeightsData[{i}]: {rowsCount}");
+                        Debug.LogError($"РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚СЂРѕРє WeightsData[{i}]: {rowsCount}");
                         return null;
                     }
 
-                    data.WeightsData[i] = new float[rowsCount][];
+                    data.WeightsData[i] = new List<List<float>>();
                     for (int j = 0; j < rowsCount; j++)
                     {
                         int colsCount = reader.ReadInt32();
                         if (colsCount < 0)
                         {
-                            Debug.LogError($"Некорректное количество столбцов WeightsData[{i}][{j}]: {colsCount}");
+                            Debug.LogError($"РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚РѕР»Р±С†РѕРІ WeightsData[{i}][{j}]: {colsCount}");
                             return null;
                         }
 
-                        data.WeightsData[i][j] = new float[colsCount];
+                        data.WeightsData[i][j] = new List<float>();
                         for (int k = 0; k < colsCount; k++)
                         {
                             data.WeightsData[i][j][k] = reader.ReadSingle();
@@ -222,22 +226,22 @@ public static class SecureBinarySaveSystem
                     }
                 }
 
-                Debug.Log("Данные успешно загружены!");
-                Debug.Log($"Layers: {data.LayersData.Length}, Neurons: {data.NeuronsData.Length}, Weights: {data.WeightsData.Length}");
+                Debug.Log("Р”Р°РЅРЅС‹Рµ СѓСЃРїРµС€РЅРѕ Р·Р°РіСЂСѓР¶РµРЅС‹!");
+                Debug.Log($"Layers: {data.LayersData.Count}, Neurons: {data.NeuronsData.Count}, Weights: {data.WeightsData.Count}");
                 return data;
             }
         }
         catch (EndOfStreamException e)
         {
-            Debug.LogError($"Файл обрезан или поврежден: {e.Message}");
+            Debug.LogError($"Р¤Р°Р№Р» РѕР±СЂРµР·Р°РЅ РёР»Рё РїРѕРІСЂРµР¶РґРµРЅ: {e.Message}");
         }
         catch (IOException e)
         {
-            Debug.LogError($"Ошибка ввода-вывода: {e.Message}");
+            Debug.LogError($"РћС€РёР±РєР° РІРІРѕРґР°-РІС‹РІРѕРґР°: {e.Message}");
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Критическая ошибка: {ex.ToString()}");
+            Debug.LogError($"РљСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР°: {ex.ToString()}");
         }
 
         return null;

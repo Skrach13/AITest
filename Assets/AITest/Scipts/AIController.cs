@@ -1,103 +1,234 @@
+п»їusing UnityEngine;
+using System.Collections.Generic;
 using TMPro;
-using UnityEngine;
 
 public class AIController : MonoBehaviour
 {
+    [Header("UI")]
     [SerializeField] private TextMeshProUGUI _scoreUI;
 
+    [Header("Target Settings")]
+    [SerializeField] private Transform target;
+    [SerializeField] private float maxTargetDistance = 20f;
 
-
-    [SerializeField] private Transform target;      // Цель (куда идти)
-    [SerializeField] private Transform[] obstacles; // Препятствия
-    [SerializeField] private float speed = 3f;      // Скорость движения
+    [Header("Movement Settings")]
+    [SerializeField] private float speed = 3f;
     [SerializeField] private float rotationSpeed = 100f;
+    [SerializeField] private float obstacleAvoidDistance = 2f;
+
+    [Header("Raycast Settings")]
+    [SerializeField] private float rayLength = 5f;
+    [SerializeField] private LayerMask obstacleMask;
+    [SerializeField] private bool showRays = true;
+
+    [Header("Save Settings")]
+    [SerializeField] private bool isLoad = false;
+    [SerializeField] private int countSave = 0;
 
     private NeuralNetwork brain;
-    private float[] inputs = new float[5]; // 5 входов
-    private float[] outputs = new float[2]; // 2 выхода (движение и поворот)
+    private List<float> inputs;
+    private List<float> outputs;
+    private float[] rayAngles = { 0f, 45f, 90f, 135f, 180f, 225f, 270f, 315f };
 
-    public NeuralNetwork Brain { get => brain; set => brain = value; }
+    public NeuralNetwork Brain => brain;
 
-    void Start()
-    {       
-        // Инициализация нейросети: 5 входов, 6 скрытых нейронов, 2 выхода
-        Brain = new NeuralNetwork(new int[] { 5, 6, 2 });
-        InvokeRepeating("MakeDecision", 0.5f, 0.1f); // Принимать решение каждые 0.1 сек
+    private void Start()
+    {
+        try
+        {
+            if (isLoad)
+            {
+                LoadNetwork();
+            }
+            else
+            {
+                CreateNewNetwork();
+            }
+
+            InitializeIO();
+            InvokeRepeating(nameof(MakeDecision), 0.5f, 0.1f);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Initialization failed: {ex.Message}");
+            FallbackInitialization();
+        }
     }
 
-    void Update()
+    private void LoadNetwork()
     {
-        // Движение на основе выходов нейросети
-        float move = outputs[0];
-        float turn = outputs[1];
+        var data = SaveManager.LoadWeightAI(countSave);
+
+        if (data == null || !ValidateNetworkData(data))
+        {
+            Debug.LogWarning("Invalid saved data. Creating new network.");
+            CreateNewNetwork();
+            return;
+        }
+
+        brain = new NeuralNetwork(data.LayersData);
+        CopyWeights(data.WeightsData);
+        Debug.Log("Network loaded successfully!");
+    }
+
+    private void CopyWeights(List<List<List<float>>> sourceWeights)
+    {
+        for (int i = 0; i < Mathf.Min(brain.Weights.Count, sourceWeights.Count); i++)
+        {
+            for (int j = 0; j < Mathf.Min(brain.Weights[i].Count, sourceWeights[i].Count); j++)
+            {
+                for (int k = 0; k < Mathf.Min(brain.Weights[i][j].Count, sourceWeights[i][j].Count); k++)
+                {
+                    brain.Weights[i][j][k] = sourceWeights[i][j][k];
+                }
+            }
+        }
+    }
+
+    private void CreateNewNetwork()
+    {
+        brain = new NeuralNetwork(new List<int> { 11, 8, 2 });
+        Debug.Log("New neural network created.");
+    }
+
+    private void InitializeIO()
+    {
+        inputs = new List<float>(new float[brain.Layers[0]]);
+        outputs = new List<float>(new float[brain.Layers[^1]]);
+    }
+
+    private void FallbackInitialization()
+    {
+        CreateNewNetwork();
+        inputs = new List<float>(new float[11]);
+        outputs = new List<float>();
+        InvokeRepeating(nameof(MakeDecision), 0.5f, 0.1f);
+    }
+
+    private bool ValidateNetworkData(AIData data)
+    {
+        if (data?.LayersData == null || data.WeightsData == null) return false;
+        if (data.LayersData.Count < 2) return false;
+        if (data.WeightsData.Count != data.LayersData.Count - 1) return false;
+
+        for (int i = 0; i < data.WeightsData.Count; i++)
+        {
+            if (data.WeightsData[i].Count != data.LayersData[i + 1]) return false;
+            foreach (var row in data.WeightsData[i])
+            {
+                if (row.Count != data.LayersData[i]) return false;
+            }
+        }
+        return true;
+    }
+
+    private void Update()
+    {
+        if (outputs == null || outputs.Count < 2) return;
+
+        float move = Mathf.Clamp(outputs[0], -1f, 1f);
+        float turn = Mathf.Clamp(outputs[1], -1f, 1f);
 
         transform.Translate(0, 0, move * speed * Time.deltaTime);
         transform.Rotate(0, turn * rotationSpeed * Time.deltaTime, 0);
     }
 
-    void MakeDecision()
+    private void MakeDecision()
     {
-        // 1. Собираем входные данные для нейросети
-        Vector3 dirToTarget = (target.position - transform.position).normalized;
-        inputs[0] = Vector3.Distance(transform.position, target.position) / 10f; // Нормировка
-        inputs[1] = Vector3.Dot(transform.forward, dirToTarget); // Направление к цели
-        inputs[2] = Vector3.Dot(transform.right, dirToTarget);
+        if (target == null || brain == null) return;
 
-        // Расстояния до препятствий
-        for (int i = 0; i < 2; i++)
+        try
         {
-            if (i < obstacles.Length)
+            var currentInputs = PrepareInputs();
+            var currentOutputs = brain.FeedForward(currentInputs);
+            UpdateNetwork(currentInputs, currentOutputs);
+            outputs = currentOutputs;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Decision error: {ex.Message}");
+        }
+    }
+
+    private List<float> PrepareInputs()
+    {
+        var raycastHits = GetRaycastDistances();
+        Vector3 dirToTarget = (target.position - transform.position).normalized;
+        float distanceToTarget = Vector3.Distance(transform.position, target.position);
+
+        var currentInputs = new List<float>
+        {
+            Mathf.Clamp01(distanceToTarget / maxTargetDistance),
+            Vector3.Dot(transform.forward, dirToTarget),
+            Vector3.Dot(transform.right, dirToTarget)
+        };
+        currentInputs.AddRange(raycastHits);
+        return currentInputs;
+    }
+
+    private void UpdateNetwork(List<float> inputs, List<float> outputs)
+    {
+        float reward = CalculateReward(inputs.GetRange(3, 8));
+        var expectedOutputs = GetExpectedOutputs(reward, outputs);
+        brain.Train(new List<List<float>> { inputs }, new List<List<float>> { expectedOutputs });
+    }
+
+    private List<float> GetRaycastDistances()
+    {
+        var results = new List<float>();
+
+        foreach (float angle in rayAngles)
+        {
+            Vector3 dir = Quaternion.Euler(0, angle, 0) * transform.forward;
+            if (Physics.Raycast(transform.position, dir, out var hit, rayLength, obstacleMask))
             {
-                Vector3 dirToObstacle = (obstacles[i].position - transform.position).normalized;
-                inputs[3 + i] = Vector3.Distance(transform.position, obstacles[i].position) / 5f;
+                float normDist = 1f - Mathf.Clamp01(hit.distance / obstacleAvoidDistance);
+                results.Add(normDist);
+                if (showRays) Debug.DrawLine(transform.position, hit.point, Color.Lerp(Color.green, Color.red, normDist));
             }
             else
             {
-                inputs[3 + i] = 1f; // Если препятствий нет, ставим макс. расстояние
+                results.Add(0f);
+                if (showRays) Debug.DrawLine(transform.position, transform.position + dir * rayLength, Color.green);
             }
         }
-
-        // 2. Получаем решение от нейросети
-        outputs = Brain.FeedForward(inputs);
-
-        // 3. Обучаем нейросеть на основе результата
-        float reward = CalculateReward();
-        Brain.BackPropagate(inputs, GetExpectedOutputs(reward));
+        return results;
     }
 
-    float CalculateReward()
-    {       
-        float reward = 0f;
+    private float CalculateReward(List<float> rayHits)
+    {
+        if (target == null) return 0f;
 
-        // Награда за приближение к цели
-        float distanceToTarget = Vector3.Distance(transform.position, target.position);
-        reward += 0.1f * (1f - distanceToTarget / 20f);
+        float reward = 0.1f * (1f - Mathf.Clamp01(Vector3.Distance(transform.position, target.position) / maxTargetDistance));
 
-        // Штраф за столкновение с препятствием
-        foreach (var obstacle in obstacles)
+        foreach (float hit in rayHits)
         {
-            if (Vector3.Distance(transform.position, obstacle.position) < 1.5f)
-            {
-                reward -= 0.5f;
-            }
+            if (hit > 0.7f) reward -= 0.3f;
+            else if (hit > 0.3f) reward -= 0.1f;
         }
 
-        _scoreUI.text = reward.ToString();
-
+        _scoreUI?.SetText(reward.ToString("F2"));
         return reward;
     }
 
-    float[] GetExpectedOutputs(float reward)
+    private List<float> GetExpectedOutputs(float reward, List<float> currentOutputs)
     {
-        // Если награда положительная, усиливаем текущие выходы
-        if (reward > 0)
+        return reward > 0
+            ? new List<float> { currentOutputs[0] * 1.2f, currentOutputs[1] * 1.2f }
+            : new List<float> { -currentOutputs[0], -currentOutputs[1] };
+    }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1, 0, 0, 0.1f);
+        Gizmos.DrawSphere(transform.position, obstacleAvoidDistance);
+
+        if (target != null)
         {
-            return new float[] { outputs[0] * 1.2f, outputs[1] * 1.2f };
-        }
-        // Если штраф, меняем направление
-        else
-        {
-            return new float[] { -outputs[0], -outputs[1] };
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(transform.position, target.position);
         }
     }
+#endif
 }
