@@ -266,7 +266,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1237572636}
         m_TargetAssemblyTypeName: SaveManager, Assembly-CSharp
-        m_MethodName: LoadWeightAI
+        m_MethodName: LoadCurrentAIWeights
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -429,9 +429,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1237572635}
+      - m_Target: {fileID: 1237572636}
         m_TargetAssemblyTypeName: SaveManager, Assembly-CSharp
-        m_MethodName: 
+        m_MethodName: SaveCurrentAIWeights
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1260,6 +1260,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _doNotDestroyOnload: 0
+  aiController: {fileID: 1578590158}
+  currentSaveId: 0
 --- !u!4 &1237572637
 Transform:
   m_ObjectHideFlags: 0
@@ -1511,10 +1513,10 @@ MonoBehaviour:
   speed: 3
   rotationSpeed: 100
   obstacleAvoidDistance: 2
-  rayLength: 5
+  rayLength: 3
   obstacleMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   showRays: 1
   isLoad: 1
   countSave: 0

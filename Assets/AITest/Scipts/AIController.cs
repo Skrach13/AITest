@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System;
 
 public class AIController : MonoBehaviour
 {
@@ -21,110 +22,83 @@ public class AIController : MonoBehaviour
     [SerializeField] private LayerMask obstacleMask;
     [SerializeField] private bool showRays = true;
 
-    [Header("Save Settings")]
-    [SerializeField] private bool isLoad = false;
-    [SerializeField] private int countSave = 0;
+    [Header("Network Configuration")]
+    [SerializeField] private List<int> networkLayers = new List<int> { 11, 8, 2 };
+    [SerializeField] private NeuralNetwork.ActivationTypeNeiro activationType = NeuralNetwork.ActivationTypeNeiro.Sigmoid;
+    [SerializeField, Range(0.001f, 1f)] private float learningRate = 0.1f;
+    [SerializeField, Range(0f, 0.1f)] private float regularizationFactor = 0.001f;
+    [SerializeField, Range(0f, 0.99f)] private float momentumFactor = 0.9f;
+    [SerializeField] private bool loadOnStart = false;
+    [SerializeField] private int saveSlot = 0;
 
     private NeuralNetwork brain;
-    private List<float> inputs;
-    private List<float> outputs;
-    private float[] rayAngles = { 0f, 45f, 90f, 135f, 180f, 225f, 270f, 315f };
+
+    private float[] inputs;
+    private float[] outputs;
+    private readonly float[] rayAngles = { 0f, 45f, 90f, 135f, 180f, 225f, 270f, 315f };
 
     public NeuralNetwork Brain => brain;
+        
 
-    private void Start()
+   
+    private void Awake()
     {
-        try
-        {
-            if (isLoad)
-            {
-                LoadNetwork();
-            }
-            else
-            {
-                CreateNewNetwork();
-            }
-
-            InitializeIO();
-            InvokeRepeating(nameof(MakeDecision), 0.5f, 0.1f);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"Initialization failed: {ex.Message}");
-            FallbackInitialization();
-        }
+        InitializeNetwork();
     }
 
-    private void LoadNetwork()
+    private void InitializeNetwork()
     {
-        var data = SaveManager.LoadWeightAI(countSave);
-
-        if (data == null || !ValidateNetworkData(data))
+        if (loadOnStart)
         {
-            Debug.LogWarning("Invalid saved data. Creating new network.");
+            LoadNetwork();
+        }
+        else
+        {
             CreateNewNetwork();
-            return;
-        }
-
-        brain = new NeuralNetwork(data.LayersData);
-        CopyWeights(data.WeightsData);
-        Debug.Log("Network loaded successfully!");
-    }
-
-    private void CopyWeights(List<List<List<float>>> sourceWeights)
-    {
-        for (int i = 0; i < Mathf.Min(brain.Weights.Count, sourceWeights.Count); i++)
-        {
-            for (int j = 0; j < Mathf.Min(brain.Weights[i].Count, sourceWeights[i].Count); j++)
-            {
-                for (int k = 0; k < Mathf.Min(brain.Weights[i][j].Count, sourceWeights[i][j].Count); k++)
-                {
-                    brain.Weights[i][j][k] = sourceWeights[i][j][k];
-                }
-            }
         }
     }
 
     private void CreateNewNetwork()
     {
-        brain = new NeuralNetwork(new List<int> { 11, 8, 2 });
-        Debug.Log("New neural network created.");
-    }
-
-    private void InitializeIO()
-    {
-        inputs = new List<float>(new float[brain.Layers[0]]);
-        outputs = new List<float>(new float[brain.Layers[^1]]);
-    }
-
-    private void FallbackInitialization()
-    {
-        CreateNewNetwork();
-        inputs = new List<float>(new float[11]);
-        outputs = new List<float>();
-        InvokeRepeating(nameof(MakeDecision), 0.5f, 0.1f);
-    }
-
-    private bool ValidateNetworkData(AIData data)
-    {
-        if (data?.LayersData == null || data.WeightsData == null) return false;
-        if (data.LayersData.Count < 2) return false;
-        if (data.WeightsData.Count != data.LayersData.Count - 1) return false;
-
-        for (int i = 0; i < data.WeightsData.Count; i++)
+        brain = new NeuralNetwork(new List<int>(networkLayers), learningRate)
         {
-            if (data.WeightsData[i].Count != data.LayersData[i + 1]) return false;
-            foreach (var row in data.WeightsData[i])
-            {
-                if (row.Count != data.LayersData[i]) return false;
-            }
-        }
-        return true;
+            activation = activationType,
+            regularizationFactor = regularizationFactor,
+            momentumFactor = momentumFactor
+        };
+        Debug.Log("New neural network created with architecture: " + string.Join("-", networkLayers));
     }
 
+    public void SaveCurrentNetwork()
+    {
+        try
+        {
+            SaveManager.Instance.SaveNetwork(brain, saveSlot);
+            Debug.Log($"Network saved to slot {saveSlot}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Save failed: {ex.Message}");
+        }
+    }
+
+    public void LoadNetwork()
+    {
+        try
+        {
+            brain = SaveManager.Instance.LoadNetwork(saveSlot);
+            Debug.Log($"Network loaded from slot {saveSlot}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Load failed: {ex.Message}");
+            CreateNewNetwork();
+        }
+    }    
+   
     private void Update()
     {
-        if (outputs == null || outputs.Count < 2) return;
+        if (outputs == null || outputs.Length < 2) return;
 
         float move = Mathf.Clamp(outputs[0], -1f, 1f);
         float turn = Mathf.Clamp(outputs[1], -1f, 1f);
@@ -139,10 +113,9 @@ public class AIController : MonoBehaviour
 
         try
         {
-            var currentInputs = PrepareInputs();
-            var currentOutputs = brain.FeedForward(currentInputs);
-            UpdateNetwork(currentInputs, currentOutputs);
-            outputs = currentOutputs;
+            UpdateInputs();
+            outputs = brain.FeedForward(inputs);
+            TrainNetwork();
         }
         catch (System.Exception ex)
         {
@@ -150,73 +123,77 @@ public class AIController : MonoBehaviour
         }
     }
 
-    private List<float> PrepareInputs()
+    private void UpdateInputs()
     {
-        var raycastHits = GetRaycastDistances();
+        // Target data
         Vector3 dirToTarget = (target.position - transform.position).normalized;
-        float distanceToTarget = Vector3.Distance(transform.position, target.position);
+        inputs[0] = Mathf.Clamp01(Vector3.Distance(transform.position, target.position) / maxTargetDistance);
+        inputs[1] = Vector3.Dot(transform.forward, dirToTarget);
+        inputs[2] = Vector3.Dot(transform.right, dirToTarget);
 
-        var currentInputs = new List<float>
+        // Raycast data
+        for (int i = 0; i < rayAngles.Length; i++)
         {
-            Mathf.Clamp01(distanceToTarget / maxTargetDistance),
-            Vector3.Dot(transform.forward, dirToTarget),
-            Vector3.Dot(transform.right, dirToTarget)
-        };
-        currentInputs.AddRange(raycastHits);
-        return currentInputs;
-    }
-
-    private void UpdateNetwork(List<float> inputs, List<float> outputs)
-    {
-        float reward = CalculateReward(inputs.GetRange(3, 8));
-        var expectedOutputs = GetExpectedOutputs(reward, outputs);
-        brain.Train(new List<List<float>> { inputs }, new List<List<float>> { expectedOutputs });
-    }
-
-    private List<float> GetRaycastDistances()
-    {
-        var results = new List<float>();
-
-        foreach (float angle in rayAngles)
-        {
-            Vector3 dir = Quaternion.Euler(0, angle, 0) * transform.forward;
+            Vector3 dir = Quaternion.Euler(0, rayAngles[i], 0) * transform.forward;
             if (Physics.Raycast(transform.position, dir, out var hit, rayLength, obstacleMask))
             {
                 float normDist = 1f - Mathf.Clamp01(hit.distance / obstacleAvoidDistance);
-                results.Add(normDist);
+                inputs[3 + i] = normDist;
                 if (showRays) Debug.DrawLine(transform.position, hit.point, Color.Lerp(Color.green, Color.red, normDist));
             }
             else
             {
-                results.Add(0f);
+                inputs[3 + i] = 0f;
                 if (showRays) Debug.DrawLine(transform.position, transform.position + dir * rayLength, Color.green);
             }
         }
-        return results;
     }
 
-    private float CalculateReward(List<float> rayHits)
+    private void TrainNetwork()
+    {
+        float reward = CalculateReward();
+        float[] expectedOutputs = GetExpectedOutputs(reward);
+        brain.Train(new float[][] { inputs }, new float[][] { expectedOutputs });
+    }
+
+    private float CalculateReward()
     {
         if (target == null) return 0f;
 
         float reward = 0.1f * (1f - Mathf.Clamp01(Vector3.Distance(transform.position, target.position) / maxTargetDistance));
 
-        foreach (float hit in rayHits)
+        // Penalty for obstacles
+        for (int i = 3; i < inputs.Length; i++)
         {
-            if (hit > 0.7f) reward -= 0.3f;
-            else if (hit > 0.3f) reward -= 0.1f;
+            if (inputs[i] > 0.7f) reward -= 0.3f;
+            else if (inputs[i] > 0.3f) reward -= 0.1f;
         }
 
         _scoreUI?.SetText(reward.ToString("F2"));
         return reward;
     }
 
-    private List<float> GetExpectedOutputs(float reward, List<float> currentOutputs)
+    private float[] GetExpectedOutputs(float reward)
     {
-        return reward > 0
-            ? new List<float> { currentOutputs[0] * 1.2f, currentOutputs[1] * 1.2f }
-            : new List<float> { -currentOutputs[0], -currentOutputs[1] };
+        if (reward > 0)
+            return new float[] { outputs[0] * 1.2f, outputs[1] * 1.2f };
+        else
+            return new float[] { -outputs[0], -outputs[1] };
     }
+
+    //public void SaveCurrentNetwork()
+    //{
+    //    try
+    //    {
+    //        var networkData = NeuralNetworkConverter.ToData(brain);
+    //        SaveManager.SaveNetwork(networkData, saveSlot);
+    //        Debug.Log($"Network saved to slot {saveSlot}");
+    //    }
+    //    catch (System.Exception ex)
+    //    {
+    //        Debug.LogError($"Save failed: {ex.Message}");
+    //    }
+    //}
 
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()

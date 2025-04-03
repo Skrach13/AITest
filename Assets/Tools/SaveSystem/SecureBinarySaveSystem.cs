@@ -131,19 +131,9 @@ public static class SecureBinarySaveSystem
 
         try
         {
-            string fullPath = Path.GetFullPath(savePath);
-            Debug.Log($"Попытка загрузки из: {fullPath}");
-
             if (!File.Exists(savePath))
             {
-                Debug.LogError($"Файл не существует по пути: {fullPath}");
-                return null;
-            }
-
-            long fileSize = new FileInfo(savePath).Length;
-            if (fileSize == 0)
-            {
-                Debug.LogError("Файл сохранения пустой!");
+                Debug.LogError($"Файл не существует: {savePath}");
                 return null;
             }
 
@@ -153,97 +143,54 @@ public static class SecureBinarySaveSystem
 
                 // 1. LayersData
                 int layersLength = reader.ReadInt32();
-                if (layersLength < 0 || layersLength > 10000) // Разумные пределы
-                {
-                    Debug.LogError($"Некорректная длина LayersData: {layersLength}");
-                    return null;
-                }
-
-                data.LayersData = new List<int>();
+                data.LayersData = new List<int>(layersLength); // Инициализация с capacity
                 for (int i = 0; i < layersLength; i++)
                 {
-                    data.LayersData[i] = reader.ReadInt32();
+                    data.LayersData.Add(reader.ReadInt32()); // Используем Add вместо индекса
                 }
 
                 // 2. NeuronsData
                 int neuronsArraysCount = reader.ReadInt32();
-                if (neuronsArraysCount < 0)
-                {
-                    Debug.LogError($"Некорректное количество массивов NeuronsData: {neuronsArraysCount}");
-                    return null;
-                }
-
-                data.NeuronsData = new List<List<float>>();
+                data.NeuronsData = new List<List<float>>(neuronsArraysCount);
                 for (int i = 0; i < neuronsArraysCount; i++)
                 {
                     int neuronsLength = reader.ReadInt32();
-                    if (neuronsLength < 0)
-                    {
-                        Debug.LogError($"Некорректная длина NeuronsData[{i}]: {neuronsLength}");
-                        return null;
-                    }
-
-                    data.NeuronsData[i] = new List<float>();
+                    List<float> neuronList = new List<float>(neuronsLength);
                     for (int j = 0; j < neuronsLength; j++)
                     {
-                        data.NeuronsData[i][j] = reader.ReadSingle();
+                        neuronList.Add(reader.ReadSingle());
                     }
+                    data.NeuronsData.Add(neuronList);
                 }
 
                 // 3. WeightsData
                 int weightsMatricesCount = reader.ReadInt32();
-                if (weightsMatricesCount < 0)
-                {
-                    Debug.LogError($"Некорректное количество матриц WeightsData: {weightsMatricesCount}");
-                    return null;
-                }
-
-                data.WeightsData = new List<List<List<float>>>();
+                data.WeightsData = new List<List<List<float>>>(weightsMatricesCount);
                 for (int i = 0; i < weightsMatricesCount; i++)
                 {
                     int rowsCount = reader.ReadInt32();
-                    if (rowsCount < 0)
-                    {
-                        Debug.LogError($"Некорректное количество строк WeightsData[{i}]: {rowsCount}");
-                        return null;
-                    }
-
-                    data.WeightsData[i] = new List<List<float>>();
+                    List<List<float>> weightMatrix = new List<List<float>>(rowsCount);
                     for (int j = 0; j < rowsCount; j++)
                     {
                         int colsCount = reader.ReadInt32();
-                        if (colsCount < 0)
-                        {
-                            Debug.LogError($"Некорректное количество столбцов WeightsData[{i}][{j}]: {colsCount}");
-                            return null;
-                        }
-
-                        data.WeightsData[i][j] = new List<float>();
+                        List<float> weightRow = new List<float>(colsCount);
                         for (int k = 0; k < colsCount; k++)
                         {
-                            data.WeightsData[i][j][k] = reader.ReadSingle();
+                            weightRow.Add(reader.ReadSingle());
                         }
+                        weightMatrix.Add(weightRow);
                     }
+                    data.WeightsData.Add(weightMatrix);
                 }
 
-                Debug.Log("Данные успешно загружены!");
-                Debug.Log($"Layers: {data.LayersData.Count}, Neurons: {data.NeuronsData.Count}, Weights: {data.WeightsData.Count}");
+                Debug.Log($"Успешно загружено: Layers={data.LayersData.Count}, Neurons={data.NeuronsData.Count}, Weights={data.WeightsData.Count}");
                 return data;
             }
         }
-        catch (EndOfStreamException e)
-        {
-            Debug.LogError($"Файл обрезан или поврежден: {e.Message}");
-        }
-        catch (IOException e)
-        {
-            Debug.LogError($"Ошибка ввода-вывода: {e.Message}");
-        }
         catch (Exception ex)
         {
-            Debug.LogError($"Критическая ошибка: {ex.ToString()}");
+            Debug.LogError($"Ошибка загрузки: {ex.GetType().Name} - {ex.Message}");
+            return null;
         }
-
-        return null;
     }
 }

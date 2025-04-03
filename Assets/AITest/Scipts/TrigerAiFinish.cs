@@ -14,7 +14,7 @@ public class TrigerAiFinish : MonoBehaviour
     void Start()
     {
         capsuleCollider = GetComponentInChildren<CapsuleCollider>();
-        Debug.Log(capsuleCollider);
+      
     }
 
     private void OnTriggerEnter(Collider other)

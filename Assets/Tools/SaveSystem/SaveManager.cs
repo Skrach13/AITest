@@ -1,36 +1,62 @@
-﻿using UnityEngine;
+﻿using System.IO;
+using UnityEngine;
 
 public class SaveManager : SingletonBase<SaveManager>
 {
-    public static AIData LoadWeightAI(int saveId)
-    {
-        var data = SecureBinarySaveSystem.LoadGame(saveId.ToString());
+    [SerializeField] private string saveFolder = "AI_Saves";
+    [SerializeField] private string fileExtension = ".ainet";
 
-        if (data == null)
-        {
-            Debug.LogWarning($"No saved data found for ID {saveId}");
-            return null;
-        }
-
-        Debug.Log($"Loaded network: {data.LayersData.Count} layers");
-        return data;
-    }
-    
-    public void SaveWeightAI(AIController controller, int saveId)
+    public void SaveNetwork(NeuralNetwork network, int slot)
     {
-        if (controller?.Brain == null)
+        if (network == null)
         {
-            Debug.LogError("Invalid controller or brain reference");
+            Debug.LogError("Cannot save null network");
             return;
         }
 
-        var data = new AIData(
-            controller.Brain.Layers,
-            controller.Brain.Neurons,
-            controller.Brain.Weights
-        );
+        try
+        {
+            var data = NeuralNetworkConverter.ToData(network);
+            string path = GetSavePath(slot);
+            NeuralNetworkSerializer.SaveToFile(data, path);
+            Debug.Log($"Network saved to: {path}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Save failed: {ex.Message}");
+        }
+    }
 
-        SecureBinarySaveSystem.SaveGame(data, saveId.ToString());
-        Debug.Log($"Saved network with ID {saveId}");
+    public NeuralNetwork LoadNetwork(int slot)
+    {
+        try
+        {
+            string path = GetSavePath(slot);
+            var data = NeuralNetworkSerializer.LoadFromFile(path);
+            return NeuralNetworkConverter.FromData(data);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Load failed: {ex.Message}");
+            throw;
+        }
+    }
+
+    private string GetSavePath(int slot)
+    {
+        return Path.Combine(
+            Application.persistentDataPath,
+            saveFolder,
+            $"network_slot_{slot}{fileExtension}"
+        );
+    }
+
+    public static void EnsureSaveDirectoryExists()
+    {
+        string dir = Path.Combine(Application.persistentDataPath, Instance.saveFolder);
+        if (!Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
     }
 }
