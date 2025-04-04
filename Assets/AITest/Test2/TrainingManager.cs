@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using test2;
 using UnityEngine;
 
 namespace test2
@@ -12,13 +11,13 @@ namespace test2
         public int populationSize = 50;
         public float generationDuration = 10f;
 
-        private GeneticAlgorithm2 ga;
+        private GeneticAlgorithm ga;
         private List<AIController> agents = new List<AIController>();
         private int[] layers = new int[] { 10, 16, 16, 2 }; // 8 rays + 2 target inputs
 
         private void Start()
         {
-            ga = new GeneticAlgorithm2(populationSize, layers);
+            ga = new GeneticAlgorithm(populationSize, layers);
             StartCoroutine(StartTraining());
         }
 

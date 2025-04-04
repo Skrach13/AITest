@@ -19,7 +19,7 @@ namespace test2
         public float spawnRadius = 10f;
 
         private List<AIController> activeAgents = new List<AIController>();
-        private GeneticAlgorithm2 geneticAlgorithm;
+        private GeneticAlgorithm geneticAlgorithm;
         private int currentGeneration = 0;
         private float generationTimer;
 
@@ -44,7 +44,7 @@ namespace test2
         /// </summary>
         private void InitializeGeneration()
         {
-            geneticAlgorithm = new GeneticAlgorithm2(populationSize, networkLayers);
+            geneticAlgorithm = new GeneticAlgorithm(populationSize, networkLayers);
             SpawnAgents();
             currentGeneration = 1;
             generationTimer = generationDuration;
@@ -75,7 +75,7 @@ namespace test2
                 if (controller.target == null && targetPrefab != null)
                 {
                     Vector3 targetPos = spawnCenter + Random.insideUnitSphere * spawnRadius;
-                    targetPos.y = 0;
+                    targetPos.y = 2;
                     controller.target = Instantiate(targetPrefab, targetPos, Quaternion.identity);
                 }
 
