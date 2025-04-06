@@ -7,6 +7,7 @@ namespace test2
 {
     public class NeuralNetwork
     {
+       
         [System.Serializable]
         public class NeuralData
         {
@@ -53,7 +54,7 @@ namespace test2
                 biasesFlat = biasesList.ToArray();
                 biasShapes = biasShapesList.ToArray();
             }
-        }
+       }
 
         public NeuralData GetData()
         {

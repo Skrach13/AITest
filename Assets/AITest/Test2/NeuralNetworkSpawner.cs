@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace test2
 {
@@ -8,7 +9,9 @@ namespace test2
         [Header("Settings")]
         public int populationSize = 50;
         public float generationDuration = 30f;
-        public int[] networkLayers = new int[] { 10, 16, 16, 2 }; // 8 rays + 2 target inputs
+        public int[] networkLayers = new int[] { 18, 16, 16, 2 }; // 8 rays * 2 + 2 target inputs
+        [SerializeField] private Transform target;
+        [SerializeField] private TextAsset SavingPipulation; 
 
         [Header("Prefabs")]
         public GameObject agentPrefab;
@@ -23,7 +26,9 @@ namespace test2
         private int currentGeneration = 0;
         private float generationTimer;
 
-        void Start()
+        public GeneticAlgorithm GeneticAlgorithm { get => geneticAlgorithm; set => geneticAlgorithm = value; }
+
+        void Awake()
         {
             InitializeGeneration();
         }
@@ -72,11 +77,9 @@ namespace test2
                 controller.brain = geneticAlgorithm.population[i];
 
                 // Создаем цель для агента (если не задана)
-                if (controller.target == null && targetPrefab != null)
-                {
-                    Vector3 targetPos = spawnCenter + Random.insideUnitSphere * spawnRadius;
-                    targetPos.y = 2;
-                    controller.target = Instantiate(targetPrefab, targetPos, Quaternion.identity);
+                if (controller.target == null && target != null)
+                {                   
+                    controller.target = target;
                 }
 
                 activeAgents.Add(controller);
@@ -90,14 +93,15 @@ namespace test2
         {
             // Собираем fitness от всех агентов
             for (int i = 0; i < activeAgents.Count; i++)
-            {
+            {                
                 geneticAlgorithm.population[i].fitness = activeAgents[i].brain.fitness;
             }
 
             // Эволюционируем
             geneticAlgorithm.Evolve();
 
-            Debug.Log($"Generation {currentGeneration} completed. Best fitness: {geneticAlgorithm.population[0].fitness}");
+            Debug.Log($"Generation {currentGeneration} completed");
+
         }
 
         /// <summary>
@@ -118,8 +122,8 @@ namespace test2
         {
             foreach (AIController agent in activeAgents)
             {
-                if (agent.target != null && agent.target != targetPrefab)
-                    Destroy(agent.target.gameObject);
+                //if (agent.target != null && agent.target != targetPrefab)
+                //    Destroy(agent.target.gameObject);
 
                 Destroy(agent.gameObject);
             }

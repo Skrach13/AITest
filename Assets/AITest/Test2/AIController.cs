@@ -2,69 +2,56 @@
 
 namespace test2
 {
-    /// <summary>
-    /// Контроллер ИИ-агента, использующий нейронную сеть для навигации и обучения
-    /// </summary>
     public class AIController : MonoBehaviour
     {
         [Header("Neural Network")]
-        public NeuralNetwork brain; // Основная нейронная сеть агента
+        public NeuralNetwork brain;
 
         [Header("Movement Settings")]
-        public float moveSpeed = 5f; // Базовая скорость движения
-        public float rotationSpeed = 180f; // Скорость поворота
+        public float moveSpeed = 5f;
+        public float rotationSpeed = 180f;
 
         [Header("Sensor Settings")]
-        public float rayDistance = 5f; // Дальность лучей сенсоров
-        public int raysCount = 8; // Количество лучей вокруг агента
-        public LayerMask obstacleMask; // Маска слоев для обнаружения препятствий
+        public float rayDistance = 5f;
+        public int raysCount = 8;
+        public LayerMask obstacleMask;
+        public LayerMask agentMask; // Новый слой для детекции агентов
+        public float agentDetectionWeight = 0.7f; // Важность обнаружения других агентов
 
         [Header("Target Settings")]
-        public Transform target; // Цель для навигации
-        public float maxTargetDistance = 20f; // Максимальное расстояние до цели для нормализации
+        public Transform target;
+        public float maxTargetDistance = 20f;
 
         [Header("Training Settings")]
-        public float fitnessMultiplier = 1f; // Множитель награды
-        public float collisionPenalty = 0.5f; // Штраф за столкновение
-        public float targetReward = 2f; // Награда за достижение цели
-        public float timePenalty = 0.01f; // Штраф за бездействие
+        public float fitnessMultiplier = 1f;
+        public float collisionPenalty = 0.5f;
+        public float agentCollisionPenalty = 0.3f; // Штраф за столкновение с агентом
+        public float targetReward = 2f;
+        public float timePenalty = 0.01f;
 
-        // Приватные переменные состояния
-        private float startDistance; // Начальное расстояние до цели
-        private bool hasCollided; // Флаг столкновения
-        private bool reachedTarget; // Флаг достижения цели
-        private Vector3 lastPosition; // Позиция в предыдущем кадре
-        private float timeSinceLastProgress; // Таймер бездействия
+        private float startDistance;
+        private bool hasCollided;
+        private bool reachedTarget;
+        private Vector3 lastPosition;
+        private float timeSinceLastProgress;
 
         private void Start()
         {
-            if (brain == null)
-            {
-                InitializeDefaultNetwork();
-            }
-
-            if (target != null)
-            {
-                startDistance = Vector3.Distance(transform.position, target.position);
-            }
-
-            lastPosition = transform.position; // Инициализация отслеживания движения
+            if (brain == null) InitializeDefaultNetwork();
+            if (target != null) startDistance = Vector3.Distance(transform.position, target.position);
+            lastPosition = transform.position;
         }
 
-        /// <summary>
-        /// Инициализирует нейронную сеть со стандартной архитектурой
-        /// </summary>
         private void InitializeDefaultNetwork()
         {
             try
             {
-                // Архитектура: [входы, скрытый слой 1, скрытый слой 2, выходы]
-                brain = new NeuralNetwork(new int[] { raysCount + 2, 16, 16, 2 });
-                Debug.Log("Default neural network initialized");
+                // Теперь входной слой: raysCount*2 (препятствия + агенты) + 2 (цель)
+                brain = new NeuralNetwork(new int[] { (raysCount * 2) + 2, 16, 16, 2 });
             }
             catch (System.Exception e)
             {
-                Debug.LogError("Network initialization failed: " + e.Message);
+                Debug.LogError("Network init failed: " + e.Message);
             }
         }
 
@@ -72,118 +59,93 @@ namespace test2
         {
             if (brain == null) return;
 
-            // 1. Сбор входных данных
             float[] inputs = GetCombinedInputs();
-
-            // 2. Прямой проход через нейросеть
             float[] outputs = brain.FeedForward(inputs);
 
-            // 3. Применение решений нейросети
             if (outputs != null && outputs.Length >= 2)
             {
-                // Выходной параметр 0: поворот (-1..1)
                 float rotation = outputs[0] * rotationSpeed * Time.deltaTime;
-                // Выходной параметр 1: движение вперед/назад (-1..1)
                 float movement = Mathf.Clamp(outputs[1], -1f, 1f) * moveSpeed * Time.deltaTime;
-
                 transform.Rotate(0, rotation, 0);
                 transform.Translate(0, 0, movement);
             }
 
-            // 4. Обновление показателя эффективности
             UpdateFitness();
         }
 
-        /// <summary>
-        /// Комбинирует данные сенсоров и информации о цели в один входной вектор
-        /// </summary>
-        /// <returns>Объединенный массив входных данных для нейросети</returns>
         private float[] GetCombinedInputs()
         {
-            float[] sensorData = GetSensorInputs(); // Данные лучей
-            float[] targetData = GetTargetInputs(); // Данные цели
+            float[] obstacleInputs = GetObstacleInputs();
+            float[] agentInputs = GetAgentInputs();
+            float[] targetInputs = GetTargetInputs();
 
-            // Создаем объединенный массив
-            float[] combined = new float[sensorData.Length + targetData.Length];
-            System.Array.Copy(sensorData, 0, combined, 0, sensorData.Length);
-            System.Array.Copy(targetData, 0, combined, sensorData.Length, targetData.Length);
+            float[] combined = new float[obstacleInputs.Length + agentInputs.Length + targetInputs.Length];
+            System.Array.Copy(obstacleInputs, 0, combined, 0, obstacleInputs.Length);
+            System.Array.Copy(agentInputs, 0, combined, obstacleInputs.Length, agentInputs.Length);
+            System.Array.Copy(targetInputs, 0, combined, obstacleInputs.Length + agentInputs.Length, targetInputs.Length);
 
             return combined;
         }
 
-        /// <summary>
-        /// Получает данные от сенсоров (лучей) вокруг агента
-        /// </summary>
-        /// <returns>Массив значений от 0 (нет препятствия) до 1 (препятствие вплотную)</returns>
-        private float[] GetSensorInputs()
+        private float[] GetObstacleInputs()
         {
             float[] inputs = new float[raysCount];
-            float angleStep = 360f / raysCount; // Угол между лучами
+            float angleStep = 360f / raysCount;
 
             for (int i = 0; i < raysCount; i++)
             {
-                float angle = i * angleStep;
-                Vector3 dir = Quaternion.Euler(0, angle, 0) * transform.forward;
-
-                // Бросаем луч и получаем расстояние до препятствия
+                Vector3 dir = Quaternion.Euler(0, i * angleStep, 0) * transform.forward;
                 if (Physics.Raycast(transform.position, dir, out RaycastHit hit, rayDistance, obstacleMask))
                 {
-                    // Нормализованное расстояние (1 - близко, 0 - далеко)
                     inputs[i] = 1f - (hit.distance / rayDistance);
                 }
-                else
-                {
-                    inputs[i] = 0f; // Препятствий нет
-                }
-
                 Debug.DrawRay(transform.position, dir * rayDistance, Color.red);
             }
-
             return inputs;
         }
 
-        /// <summary>
-        /// Получает информацию о цели относительно агента
-        /// </summary>
-        /// <returns>
-        /// Массив из двух значений:
-        /// [0] - направление к цели (-1..1, где 0 - прямо)
-        /// [1] - нормализованное расстояние до цели (0..1)
-        /// </returns>
+        private float[] GetAgentInputs()
+        {
+            float[] inputs = new float[raysCount];
+            float angleStep = 360f / raysCount;
+
+            for (int i = 0; i < raysCount; i++)
+            {
+                Vector3 dir = Quaternion.Euler(0, i * angleStep, 0) * transform.forward;
+                if (Physics.Raycast(transform.position, dir, out RaycastHit hit, rayDistance, agentMask))
+                {
+                    // Игнорируем собственный коллайдер
+                    if (hit.collider.gameObject != this.gameObject)
+                    {
+                        inputs[i] = (1f - hit.distance / rayDistance) * agentDetectionWeight;
+                    }
+                }
+                Debug.DrawRay(transform.position, dir * rayDistance, Color.blue);
+            }
+            return inputs;
+        }
+
         private float[] GetTargetInputs()
         {
             float[] targetInfo = new float[2];
-
             if (target != null)
             {
                 Vector3 toTarget = target.position - transform.position;
-
-                // Вычисляем относительный угол между направлением агента и целью
                 float angle = Vector3.SignedAngle(transform.forward, toTarget, Vector3.up);
                 targetInfo[0] = Mathf.Clamp(angle / 180f, -1f, 1f);
-
-                // Нормализуем расстояние до цели
                 targetInfo[1] = Mathf.Clamp01(toTarget.magnitude / maxTargetDistance);
             }
-
             return targetInfo;
         }
 
-        /// <summary>
-        /// Обновляет показатель эффективности (fitness) агента на основе его действий
-        /// </summary>
         private void UpdateFitness()
         {
-            // Не обновляем fitness если агент столкнулся, достиг цели или цель не задана
             if (hasCollided || reachedTarget || target == null) return;
 
             float currentDist = Vector3.Distance(transform.position, target.position);
-            float progress = (startDistance - currentDist) / startDistance; // Прогресс 0..1
-
-            // Награда за приближение к цели (пропорционально прогрессу)
+            float progress = (startDistance - currentDist) / startDistance;
             brain.fitness += progress * Time.deltaTime * fitnessMultiplier;
 
-            // Штраф за бездействие (если агент почти не двигается)
             if (Vector3.Distance(transform.position, lastPosition) < 0.1f)
             {
                 timeSinceLastProgress += Time.deltaTime;
@@ -196,44 +158,35 @@ namespace test2
             }
         }
 
-        /// <summary>
-        /// Обрабатывает столкновения агента с другими объектами
-        /// </summary>
         private void OnCollisionEnter(Collision collision)
         {
             if (collision.gameObject.CompareTag("Obstacle"))
             {
                 hasCollided = true;
-                brain.fitness -= collisionPenalty; // Штраф за препятствие
+                brain.fitness -= collisionPenalty;
             }
             else if (collision.gameObject.CompareTag("Target"))
             {
                 reachedTarget = true;
-                brain.fitness += targetReward; // Награда за цель
+                brain.fitness += targetReward;
+            }
+            else if (collision.gameObject.CompareTag("Agent"))
+            {
+                brain.fitness -= agentCollisionPenalty;
             }
         }
 
-        /// <summary>
-        /// Сбрасывает состояние агента в начальное положение
-        /// </summary>
-        /// <param name="startPos">Новая стартовая позиция</param>
         public void ResetAgent(Vector3 startPos)
         {
             transform.position = startPos;
             transform.rotation = Quaternion.identity;
+            if (target != null) startDistance = Vector3.Distance(startPos, target.position);
 
-            if (target != null)
-            {
-                startDistance = Vector3.Distance(startPos, target.position);
-            }
-
-            // Сброс флагов состояния
             hasCollided = false;
             reachedTarget = false;
             timeSinceLastProgress = 0f;
             lastPosition = startPos;
 
-            // Сброс физических параметров
             Rigidbody rb = GetComponent<Rigidbody>();
             if (rb != null)
             {

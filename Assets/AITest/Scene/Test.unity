@@ -1968,11 +1968,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c478dd38bcdcf9d49bc6f46e2d0d4cdf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  aiController: {fileID: 0}
+  multiplicityPopulationSave: 15
   saveFilesDropdown: {fileID: 1678667744}
   loadButton: {fileID: 916324647}
   newSaveName: {fileID: 1428978960}
   saveButton: {fileID: 1756926413}
+  neuralNetworkSpawner: {fileID: 1672954685}
 --- !u!1 &1261716516
 GameObject:
   m_ObjectHideFlags: 0
@@ -2726,9 +2727,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   populationSize: 10
   generationDuration: 30
-  networkLayers: 0a000000100000001000000002000000
+  networkLayers: 12000000100000001000000002000000
+  target: {fileID: 745865101}
+  SavingPipulation: {fileID: 4900000, guid: 312a3cea9705348428befa387236af32, type: 3}
   agentPrefab: {fileID: 3618908391933791431, guid: bd561f30873544c47936bb720eda16f7, type: 3}
-  targetPrefab: {fileID: 745865101}
+  targetPrefab: {fileID: 0}
   spawnCenter: {x: 0, y: 7.72, z: -12.19}
   spawnRadius: 7.41
 --- !u!1 &1678667742
@@ -3469,7 +3472,7 @@ GameObject:
   - component: {fileID: 1853321922}
   m_Layer: 0
   m_Name: Canvas
-  m_TagString: Untagged
+  m_TagString: Obstacle
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3929,7 +3932,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2032013214}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ObstaclesObj
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4134,7 +4137,7 @@ GameObject:
   - component: {fileID: 2079574756}
   - component: {fileID: 2079574755}
   - component: {fileID: 2079574758}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Cube
   m_TagString: Obstacle
   m_Icon: {fileID: 0}
@@ -4402,9 +4405,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1526701092}
     m_Modifications:
+    - target: {fileID: 3233887897681224779, guid: e2f387ef65b5d3343af17333654add08, type: 3}
+      propertyPath: m_Layer
+      value: 9
+      objectReference: {fileID: 0}
     - target: {fileID: 4111036953392883217, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_Name
       value: TargetAI
+      objectReference: {fileID: 0}
+    - target: {fileID: 4111036953392883217, guid: e2f387ef65b5d3343af17333654add08, type: 3}
+      propertyPath: m_Layer
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 4111036953392883217, guid: e2f387ef65b5d3343af17333654add08, type: 3}
+      propertyPath: m_TagString
+      value: Target
       objectReference: {fileID: 0}
     - target: {fileID: 6637189054012943748, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_LocalPosition.x
@@ -4444,6 +4459,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6637189054012943748, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7935540914148283343, guid: e2f387ef65b5d3343af17333654add08, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7935540914148283343, guid: e2f387ef65b5d3343af17333654add08, type: 3}

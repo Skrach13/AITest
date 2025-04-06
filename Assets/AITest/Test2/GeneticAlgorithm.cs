@@ -1,10 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
+using static test2.NeuralNetwork;
 
 namespace test2
 {
     public class GeneticAlgorithm
     {
+        public event Action<List<NeuralNetwork>> OnNewPopulation;
         public List<NeuralNetwork> population;
         public float mutationRate = 0.1f;
         public float mutationStrength = 0.3f;
@@ -30,19 +34,43 @@ namespace test2
 
             // Сохраняем элиту
             for (int i = 0; i < eliteCount; i++)
-            {
+            {               
                 newPopulation.Add(new NeuralNetwork(population[i]));
-            }
+            }         
 
             // Заполняем остаток мутированными копиями элиты
             for (int i = eliteCount; i < population.Count; i++)
             {
-                NeuralNetwork child = new NeuralNetwork(population[i % eliteCount]);
-                child.Mutate(mutationRate, mutationStrength);
+                NeuralNetwork child = new NeuralNetwork(population[i % eliteCount]);            
+                child.Mutate(mutationRate, mutationStrength);              
                 newPopulation.Add(child);
             }
-
+           
             population = newPopulation;
+            
+            OnNewPopulation?.Invoke(population);
         }
+
+        public NeuralDatas GetNeuralDatas()
+        {
+            NeuralDatas neuralDatas = new NeuralDatas(population.Count);
+            for (int i = 0;i < population.Count; i++)
+            {
+                neuralDatas.Data[i] = population[i].GetData();
+                
+            }
+            return neuralDatas;
+        }
+
+        [System.Serializable]
+        public class NeuralDatas
+        {
+            public NeuralData[] Data;
+            public NeuralDatas(int countNeural)
+            {
+                Data = new NeuralData[countNeural];
+            }
+        }
+
     }
 }

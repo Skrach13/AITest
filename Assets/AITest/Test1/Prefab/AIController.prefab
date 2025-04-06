@@ -15,9 +15,9 @@ GameObject:
   - component: {fileID: 8017179757834455865}
   - component: {fileID: 4911669907518476267}
   - component: {fileID: 130957045360506557}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: AIController
-  m_TagString: Untagged
+  m_TagString: Agent
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -170,9 +170,14 @@ MonoBehaviour:
   obstacleMask:
     serializedVersion: 2
     m_Bits: 1
+  agentMask:
+    serializedVersion: 2
+    m_Bits: 0
+  agentDetectionWeight: 0.7
   target: {fileID: 0}
   maxTargetDistance: 20
   fitnessMultiplier: 1
   collisionPenalty: 0.5
+  agentCollisionPenalty: 0.3
   targetReward: 2
   timePenalty: 0.01
