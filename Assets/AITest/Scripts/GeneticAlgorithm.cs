@@ -23,6 +23,11 @@ namespace test2
             }
         }
 
+        public GeneticAlgorithm(List<NeuralNetwork> population)
+        {
+            this.population = population;
+        }
+
         public void Evolve()
         {
             // Сортируем по fitness (лучшие первые)
@@ -47,30 +52,9 @@ namespace test2
             }
            
             population = newPopulation;
+
             
             OnNewPopulation?.Invoke(population);
         }
-
-        public NeuralDatas GetNeuralDatas()
-        {
-            NeuralDatas neuralDatas = new NeuralDatas(population.Count);
-            for (int i = 0;i < population.Count; i++)
-            {
-                neuralDatas.Data[i] = population[i].GetData();
-                
-            }
-            return neuralDatas;
-        }
-
-        [System.Serializable]
-        public class NeuralDatas
-        {
-            public NeuralData[] Data;
-            public NeuralDatas(int countNeural)
-            {
-                Data = new NeuralData[countNeural];
-            }
-        }
-
     }
 }

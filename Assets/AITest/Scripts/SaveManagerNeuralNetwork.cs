@@ -3,13 +3,12 @@ using UnityEngine.UI;
 using System.Linq;
 using TMPro;
 using System.Collections.Generic;
-using System;
 
 namespace test2
 {
     public class SaveManagerNeuralNetwork : MonoBehaviour
     {
-        [SerializeField] private int multiplicityPopulationSave;
+        [SerializeField] private int multiplicityPopulationSave = 10;
 
 
         public TMP_Dropdown saveFilesDropdown;
@@ -35,7 +34,7 @@ namespace test2
 
         private void RefreshSaveFiles()
         {
-            string[] saves = SaveLoadManager.GetSavedFiles();
+            string[] saves = SaveLoadSystem.GetSavedFiles();
             saveFilesDropdown.ClearOptions();
             saveFilesDropdown.AddOptions(saves.ToList());
         }
@@ -43,43 +42,43 @@ namespace test2
         //TODO переделать сейчас не функционально
         private void LoadSelectedNetwork()
         {
-            string selectedFile = saveFilesDropdown.options[saveFilesDropdown.value].text;
-            NeuralNetwork loadedNetwork = SaveLoadManager.LoadNeuralNetworkNewtonsoft(selectedFile);
-            if (loadedNetwork != null)
-            {
-                //  aiController.brain = loadedNetwork;
-                Debug.Log("Network loaded: " + selectedFile);
-            }
+            //string selectedFile = saveFilesDropdown.options[saveFilesDropdown.value].text;
+            //NeuralNetwork loadedNetwork = SaveLoadSystem.LoadNeuralNetworkNewtonsoft(selectedFile);
+            //if (loadedNetwork != null)
+            //{
+            //    //  aiController.brain = loadedNetwork;
+            //    Debug.Log("Network loaded: " + selectedFile);
+            //}
         }
 
         private void SaveCurrentNetwork()
         {
-            if (!string.IsNullOrEmpty(newSaveName.text))
-            {
-                //  SaveLoadManager.SaveNeuralNetworkNewtonsoft(aiController.brain, newSaveName.text);
-                SaveLoadManager.SaveToJsonFileNewtonsoft(neuralNetworkSpawner.GeneticAlgorithm.GetNeuralDatas(), newSaveName.text);
-                newSaveName.text = "";
-                RefreshSaveFiles();
-                Debug.Log("Network saved");
-            }
+            
+            //if (!string.IsNullOrEmpty(newSaveName.text))
+            //{
+            //    SaveLoadSystem.SaveToJsonFileNewtonsoft(neuralNetworkSpawner.GeneticAlgorithm.GetNeuralDatas(), newSaveName.text);
+            //    newSaveName.text = "";
+            //    RefreshSaveFiles();
+            //    Debug.Log("Network saved");
+            //}
         }
 
         private void SavePopulationNetwork(List<NeuralNetwork> population)
         {
             if (countPopulation % multiplicityPopulationSave == 0)
             {
-                if (!string.IsNullOrEmpty(newSaveName.text))
-                {                    
-                    SaveLoadManager.SaveToJsonFileNewtonsoft(neuralNetworkSpawner.GeneticAlgorithm.GetNeuralDatas(), $"population{countPopulation}");
-                    newSaveName.text = "";
-                    RefreshSaveFiles();
-                    Debug.Log($"population{countPopulation} saved");
-                }
+                countPopulation++;
+                SaveLoadSystem.SavePopulation($"population{countPopulation}",neuralNetworkSpawner.GeneticAlgorithm.population);
+
+                RefreshSaveFiles();
+                Debug.Log($"population{countPopulation} saved");
             }
             else
             {
                 countPopulation++;
             }
         }
+
+
     }
 }

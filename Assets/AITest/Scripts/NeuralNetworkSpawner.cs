@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace test2
 {
@@ -11,7 +10,10 @@ namespace test2
         public float generationDuration = 30f;
         public int[] networkLayers = new int[] { 18, 16, 16, 2 }; // 8 rays * 2 + 2 target inputs
         [SerializeField] private Transform target;
-        [SerializeField] private TextAsset SavingPipulation; 
+
+        [Header("Save ")]
+        [SerializeField] private string savingPopulation;
+        [SerializeField] private bool isLoad;
 
         [Header("Prefabs")]
         public GameObject agentPrefab;
@@ -49,7 +51,15 @@ namespace test2
         /// </summary>
         private void InitializeGeneration()
         {
-            geneticAlgorithm = new GeneticAlgorithm(populationSize, networkLayers);
+            if (!string.IsNullOrEmpty(savingPopulation) && isLoad)
+            {              
+               geneticAlgorithm = new GeneticAlgorithm(SaveLoadSystem.LoadPopulation(savingPopulation));
+                Debug.Log($"load population");
+            }
+            else
+            {
+                geneticAlgorithm = new GeneticAlgorithm(populationSize, networkLayers);
+            }
             SpawnAgents();
             currentGeneration = 1;
             generationTimer = generationDuration;
@@ -78,7 +88,7 @@ namespace test2
 
                 // Создаем цель для агента (если не задана)
                 if (controller.target == null && target != null)
-                {                   
+                {
                     controller.target = target;
                 }
 
@@ -93,7 +103,7 @@ namespace test2
         {
             // Собираем fitness от всех агентов
             for (int i = 0; i < activeAgents.Count; i++)
-            {                
+            {
                 geneticAlgorithm.population[i].fitness = activeAgents[i].brain.fitness;
             }
 
