@@ -3658,7 +3658,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c478dd38bcdcf9d49bc6f46e2d0d4cdf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  multiplicityPopulationSave: 50
+  multiplicityPopulationSave: 30
   saveFilesDropdown: {fileID: 1678667744}
   loadButton: {fileID: 916324647}
   newSaveName: {fileID: 1428978960}
@@ -4960,7 +4960,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   populationSize: 10
-  generationDuration: 30
+  generationDuration: 60
   networkLayers: 12000000100000001000000002000000
   target: {fileID: 745865101}
   savingPopulation: population0
@@ -7121,7 +7121,7 @@ GameObject:
   - component: {fileID: 2032013214}
   m_Layer: 8
   m_Name: ObstaclesObj
-  m_TagString: Untagged
+  m_TagString: Obstacle
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7911,7 +7911,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6637189054012943748, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -3.29
       objectReference: {fileID: 0}
     - target: {fileID: 6637189054012943748, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_LocalPosition.y
@@ -7919,7 +7919,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6637189054012943748, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 30.92
+      value: 32.18
       objectReference: {fileID: 0}
     - target: {fileID: 6637189054012943748, guid: e2f387ef65b5d3343af17333654add08, type: 3}
       propertyPath: m_LocalRotation.w
